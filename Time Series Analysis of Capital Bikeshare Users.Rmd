@@ -1,0 +1,145 @@
+---
+title: "Time Series Analysis of Capital Bikeshare Users - Xuhui Ying"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+
+## Load Libraries 
+
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(janitor)
+library(skimr)
+library(kableExtra)
+library(GGally)
+library(vip)        
+library(fastshap)   
+library(MASS)
+library(ISLR)
+library(tree)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(imputeTS)
+library(forecast)
+library(urca)
+library(pracma)
+library(astsa)
+library(fpp2)
+```
+
+## Load Data
+
+Import your data with read_csv()
+
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
+
+bike_data <- read_csv("bikedata_2012.csv") %>% clean_names()
+
+head(bike_data) 
+
+tail(bike_data)
+
+skim(bike_data)
+
+```
+
+## Create time series object and plot time series
+
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
+
+bike_month <- bike_data %>%
+  group_by(year, month) %>%
+  summarize(total_users = sum(total_users))
+
+bike_month
+
+bike_month <- subset(bike_month, select=-c(year, month))
+bike_month
+
+# Create time series object and plot time series
+
+bike_ts <- ts(bike_month, start=c(2011,1), frequency = 12)
+ts.plot(bike_ts)
+
+```
+
+## Is this series white noise?
+
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
+
+Box.test(bike_ts, lag=8, fitdf=0, type="Lj")
+
+```
+
+## ADF test for stationarity
+## Use the Single Mean Version of the Test
+
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
+
+bike_df <- ur.df(bike_ts, type = "drift")
+summary(bike_df)
+
+```
+
+## Plot ACF and PACF
+
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
+
+ggAcf(bike_ts)
+
+ggPacf(bike_ts)
+
+```
+
+## Fit an ARIMA model (1, 0, 0)
+
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
+
+fit_data_1 <- sarima(bike_ts, 1, 0, 0)
+summary(fit_data_1)
+fit_data_1
+
+fit_data_1 <- Arima(bike_ts, order=c(1, 0, 0))
+summary(fit_data_1)
+checkresiduals(fit_data_1)
+
+forecast(fit_data_1, h=3) 
+autoplot(forecast(fit_data_1, h=3))
+
+```
+
+## Fit an ARIMA model (2, 0, 0)
+
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
+
+fit_data_2 <- sarima(bike_ts, 2, 0, 0)
+summary(fit_data_2)
+fit_data_2
+
+fit_data_2 <- Arima(bike_ts, order=c(2, 0, 0))
+summary(fit_data_2)
+checkresiduals(fit_data_2)
+
+forecast(fit_data_2, h=3)
+autoplot(forecast(fit_data_2, h=3))
+
+```
+
+## Use auto.arima (final model)
+
+```{r, eval=TRUE, warning=FALSE, message=FALSE}
+
+fitauto <- auto.arima(bike_ts)
+summary(fitauto)
+checkresiduals(fitauto)
+
+fitauto %>% forecast(h=3)
+fitauto %>% forecast(h=3) %>% autoplot()
+
+```
+
